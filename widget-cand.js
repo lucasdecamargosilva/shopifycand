@@ -1020,44 +1020,31 @@
         const imgContainers = ['.product__main-photos', '.product__photos', '.product__photo-container', '.product__photo', '.js-product-slide', '.product-image-column', '.js-swiper-product', '[data-store^="product-image-"]', '.product__media-wrapper', '.product-gallery__media', '.product__media', '.product-image-main', '.product-media-container', '[data-media-id]', '.product__media-item', '.product-gallery', '.product-single__media', '.media-gallery'];
 
         function tryPlaceTriggerBtn() {
-            // 1ª prioridade: container que tenha <img> dentro (evita cair em slide de vídeo)
+            // Só coloca num container de imagem com TAMANHO REAL (>80px) — evita lazyload 0px (botão fica invisível) e slide de vídeo.
             for (const sel of imgContainers) {
-                const els = document.querySelectorAll(sel);
-                for (const el of els) {
-                    if (el.querySelector('img')) {
+                for (const el of document.querySelectorAll(sel)) {
+                    if (el.querySelector('img') && el.offsetHeight > 80 && el.offsetWidth > 80) {
                         if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
                         el.appendChild(openBtn);
                         return true;
                     }
                 }
             }
-            // 2ª prioridade: qualquer container correspondente
-            for (const sel of imgContainers) {
-                const el = document.querySelector(sel);
-                if (el) {
-                    if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
-                    el.appendChild(openBtn);
-                    return true;
-                }
-            }
             return false;
         }
 
         if (!tryPlaceTriggerBtn()) {
-            // Container não pronto ainda (ex: após F5 no mobile).
-            // Observa DOM até 5s aguardando o container aparecer.
-            const observer = new MutationObserver(() => {
-                if (tryPlaceTriggerBtn()) observer.disconnect();
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-
-            setTimeout(() => {
-                observer.disconnect();
-                if (!openBtn.isConnected) {
-                    openBtn.style.cssText = 'position:fixed;bottom:30px;right:20px;top:auto;z-index:100;';
-                    document.body.appendChild(openBtn);
+            // Galeria com lazyload: espera o container ter tamanho real (poll até ~12s).
+            let _tries = 0;
+            const _iv = setInterval(() => {
+                if (tryPlaceTriggerBtn() || ++_tries > 24) {
+                    clearInterval(_iv);
+                    if (!openBtn.isConnected) {
+                        openBtn.style.cssText = 'position:fixed;bottom:30px;right:20px;top:auto;z-index:100;width:70px;height:70px;';
+                        document.body.appendChild(openBtn);
+                    }
                 }
-            }, 5000);
+            }, 500);
         }
 
 
