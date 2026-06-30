@@ -172,16 +172,16 @@
         @keyframes q-shake { 0%,50%,100%{transform:rotate(0deg)} 10%,30%{transform:rotate(-10deg)} 20%,40%{transform:rotate(10deg)} }
         .q-btn-trigger-ia {
             position: absolute; top: 14px; right: 14px; z-index: 100;
-            background: none; border: none; padding: 0; cursor: pointer;
-            width: 70px; height: 70px;
+            background: #111; border: none; padding: 0; cursor: pointer;
+            width: 60px; height: 60px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            filter: drop-shadow(0 3px 10px rgba(0,0,0,0.22));
+            box-shadow: 0 5px 16px rgba(0,0,0,0.30);
             animation: q-shake 3s infinite;
-            transition: filter 0.2s;
+            transition: box-shadow 0.2s, transform 0.2s;
         }
-        .q-btn-trigger-ia:hover { filter: drop-shadow(0 6px 18px rgba(0,0,0,0.32)); }
-        .q-btn-trigger-ia img { width: 100%; height: 100%; object-fit: contain; }
-        @media (min-width: 768px) { .q-btn-trigger-ia { width: 70px; height: 70px; } }
+        .q-btn-trigger-ia:hover { box-shadow: 0 8px 22px rgba(0,0,0,0.4); transform: scale(1.06); }
+        .q-btn-trigger-ia svg { width: 30px; height: 30px; }
+        @media (min-width: 768px) { .q-btn-trigger-ia { width: 64px; height: 64px; } }
 
         /* ── Inline button ── */
         .q-btn-inline-provador {
@@ -678,7 +678,7 @@
 
 
     // ─── IMAGEM DO BOTÃO (trigger) ─────────────────────────────────────────────
-    const stampImageHTML = `<img src="https://cdn.shopify.com/s/files/1/0636/6334/1746/files/logo_provador.png?v=1772494793" alt="Provador Virtual" style="width:100%;height:100%;object-fit:contain;">`;
+    const stampImageHTML = `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Provador Virtual"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
 
 
 
