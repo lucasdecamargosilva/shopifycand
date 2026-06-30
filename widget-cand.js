@@ -1270,7 +1270,87 @@
             if (group) group.style.display = 'none';
             // Cand: a foto principal de referência é a 2ª da página (a 1ª costuma ser
             // banner/lifestyle, não o óculos limpo). Fallback pra 1ª se só houver uma.
+            // OBS: isso é só o DEFAULT — a detecção de rosto (startFaceDetect) sobrescreve
+            // selectedProductImgUrl pela foto do óculos NO ROSTO quando encontra uma.
             selectedProductImgUrl = imgs[1] || imgs[0] || '';
+        }
+
+        // ── Detecção de rosto ──────────────────────────────────────────────
+        // O óculos no rosto de uma modelo é a melhor referência, mas vem em posição
+        // variável (2ª, 3ª...). Aqui varremos as primeiras fotos da galeria do produto
+        // e escolhemos a 1ª que tem rosto como foto PRINCIPAL. Roda no navegador:
+        // FaceDetector nativo (Chromium) e, se não houver, MediaPipe via CDN (cross-browser).
+        // Se nada detectar (ou o detector falhar), mantém o default acima — sem regressão.
+        var faceDetectPromise = null;
+        var _faceDet = null, _faceDetTried = false;
+        async function getFaceDetector() {
+            if (_faceDetTried) return _faceDet;
+            _faceDetTried = true;
+            try {
+                if ('FaceDetector' in window) { _faceDet = { native: new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 }) }; return _faceDet; }
+            } catch (e) {}
+            try {
+                var vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs');
+                var fileset = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm');
+                var det = await vision.FaceDetector.createFromOptions(fileset, {
+                    baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite' },
+                    runningMode: 'IMAGE'
+                });
+                _faceDet = { mp: det };
+            } catch (e) { _faceDet = null; }
+            return _faceDet;
+        }
+        function _loadCorsImg(url) {
+            return new Promise(function (resolve) {
+                var img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function () { resolve(img); };
+                img.onerror = function () { resolve(null); };
+                img.src = url;
+            });
+        }
+        async function _imgHasFace(det, img) {
+            try {
+                if (det.native) { var f = await det.native.detect(img); return !!(f && f.length); }
+                if (det.mp) { var r = det.mp.detect(img); return !!(r && r.detections && r.detections.length); }
+            } catch (e) {}
+            return false;
+        }
+        // Fotos SÓ da galeria principal do produto (não "Veja também"), em ordem, capadas.
+        function productGalleryUrls(limit) {
+            var main = document.querySelector('.product__main-photos, .product-slideshow, .product-image-main, .product__photos');
+            var urls = [], seen = {};
+            if (main) {
+                [].slice.call(main.querySelectorAll('img')).forEach(function (im) {
+                    var src = largestSrc(im) || im.getAttribute('data-src') || im.src || '';
+                    if (!src || src.indexOf('data:image') !== -1) return;
+                    var low = src.toLowerCase();
+                    if (/logo|icon|sprite|provador|placeholder|spacer/.test(low)) return;
+                    var key = src.split('?')[0].replace(/_(\d+)x(\d+)?\./, '.');
+                    if (seen[key]) return; seen[key] = 1;
+                    urls.push(upgradeImgUrl(src));
+                });
+            }
+            return urls.slice(0, limit || 8);
+        }
+        async function detectFacePhoto(urls) {
+            if (!urls || !urls.length) return null;
+            var det = await getFaceDetector();
+            if (!det) return null;
+            for (var i = 0; i < urls.length; i++) {
+                var img = await _loadCorsImg(urls[i]);
+                if (!img) continue;
+                if (await _imgHasFace(det, img)) return urls[i];
+            }
+            return null;
+        }
+        function startFaceDetect() {
+            if (faceDetectPromise) return faceDetectPromise;
+            faceDetectPromise = detectFacePhoto(productGalleryUrls(8)).then(function (u) {
+                if (u) { selectedProductImgUrl = u; try { console.log('[PL Cand] foto no rosto detectada como principal'); } catch (e) {} }
+                return u;
+            }).catch(function () { return null; });
+            return faceDetectPromise;
         }
 
         function openModal() {
@@ -1283,6 +1363,9 @@
             }
             modal.style.display = 'flex';
             lockBodyScroll();
+            // Dispara a detecção de rosto em background — termina enquanto o cliente
+            // digita telefone e tira a foto, então o gerar já tem a foto certa.
+            try { startFaceDetect(); } catch (e) {}
             // Mostra contador imediatamente (só por IP) ao abrir o modal
             if (typeof _checkProvasRestantes === 'function') _checkProvasRestantes();
         }
@@ -1701,6 +1784,14 @@
                     showError();
                     return;
                 }
+
+                // Aguarda a detecção de rosto (se ainda rodando) p/ garantir que a foto
+                // do óculos NO ROSTO seja a principal. Timeout 4s -> usa o default se demorar.
+                try {
+                    if (faceDetectPromise) {
+                        await Promise.race([faceDetectPromise, new Promise(function (r) { setTimeout(r, 4000); })]);
+                    }
+                } catch (e) {}
 
                 const prodImg = selectedProductImgUrl || (document.querySelector('meta[property="og:image"]')?.content || '');
                 const prodName = document.querySelector('h1.product__title,.product-single__title,h1')?.innerText || document.title;
