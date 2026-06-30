@@ -379,6 +379,16 @@
         }
         .q-face-frame:hover { transform: scale(1.015); }
         .q-face-frame img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        /* Câmera ao vivo (getUserMedia) */
+        .q-cam-overlay { position: fixed; inset: 0; z-index: 2147483646; background: #000; display: none; align-items: center; justify-content: center; }
+        .q-cam-overlay.is-open { display: flex; }
+        .q-cam-video { width: 100%; height: 100%; object-fit: cover; }
+        .q-cam-overlay.is-front .q-cam-video { transform: scaleX(-1); }
+        .q-cam-controls { position: absolute; bottom: 24px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 28px; }
+        .q-cam-shutter { width: 68px; height: 68px; border-radius: 50%; background: #fff; border: 4px solid rgba(255,255,255,.55); cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,.45); padding: 0; }
+        .q-cam-shutter:active { transform: scale(.93); }
+        .q-cam-mini { width: 46px; height: 46px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; line-height: 1; }
+        .q-cam-close { position: absolute; top: 14px; right: 14px; }
         .q-face-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .q-face-placeholder i { font-size: 72px; color: #d0d0d0; }
         /* Corner marks — clean editorial style */
@@ -1269,9 +1279,70 @@
         };
 
         // Camera / gallery buttons
-        document.getElementById('q-btn-camera').onclick = function() { cameraInput.click(); };
         document.getElementById('q-btn-gallery').onclick = function() { galleryInput.click(); };
         document.getElementById('q-face-frame').onclick = function() { galleryInput.click(); };
+
+        // ── Câmera ao vivo (getUserMedia) — abre a câmera de verdade dentro do provador.
+        //    Fallback p/ <input capture> só quando getUserMedia não existe / é negado
+        //    (ex.: contexto inseguro ou webview que bloqueia a câmera). ──
+        let camStream = null, camFacing = 'user', camOverlay = null;
+        function buildCamOverlay() {
+            if (camOverlay) return camOverlay;
+            camOverlay = document.createElement('div');
+            camOverlay.className = 'q-cam-overlay';
+            camOverlay.innerHTML =
+                '<video class="q-cam-video" autoplay playsinline muted></video>' +
+                '<button class="q-cam-mini q-cam-close" type="button" aria-label="Fechar">&#10005;</button>' +
+                '<div class="q-cam-controls">' +
+                  '<button class="q-cam-mini q-cam-flip" type="button" aria-label="Virar câmera">&#8635;</button>' +
+                  '<button class="q-cam-shutter" type="button" aria-label="Tirar foto"></button>' +
+                  '<span style="width:46px"></span>' +
+                '</div>';
+            document.body.appendChild(camOverlay);
+            camOverlay.querySelector('.q-cam-close').onclick = closeLiveCamera;
+            camOverlay.querySelector('.q-cam-flip').onclick = flipCamera;
+            camOverlay.querySelector('.q-cam-shutter').onclick = snapPhoto;
+            return camOverlay;
+        }
+        async function startStream() {
+            const v = camOverlay.querySelector('.q-cam-video');
+            if (camStream) camStream.getTracks().forEach(t => t.stop());
+            camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing }, audio: false });
+            v.srcObject = camStream;
+            camOverlay.classList.toggle('is-front', camFacing === 'user');
+        }
+        async function openLiveCamera() {
+            if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) || !window.isSecureContext) {
+                cameraInput.click(); return;
+            }
+            buildCamOverlay();
+            camOverlay.classList.add('is-open');
+            try { await startStream(); }
+            catch (e) { closeLiveCamera(); cameraInput.click(); }
+        }
+        function closeLiveCamera() {
+            if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+            if (camOverlay) camOverlay.classList.remove('is-open');
+        }
+        async function flipCamera() {
+            const prev = camFacing;
+            camFacing = camFacing === 'user' ? 'environment' : 'user';
+            try { await startStream(); } catch (e) { camFacing = prev; try { await startStream(); } catch (_) {} }
+        }
+        function snapPhoto() {
+            const v = camOverlay.querySelector('.q-cam-video');
+            if (!v || !v.videoWidth) return;
+            const c = document.createElement('canvas');
+            c.width = v.videoWidth; c.height = v.videoHeight;
+            // captura SEM espelhar (imagem fiel p/ a IA), mesmo com preview espelhado
+            c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+            c.toBlob(function(blob) {
+                const file = new File([blob], 'foto.jpg', { type: 'image/jpeg' });
+                closeLiveCamera();
+                handlePhotoSelected(file);
+            }, 'image/jpeg', 0.95);
+        }
+        document.getElementById('q-btn-camera').onclick = openLiveCamera;
 
         function loadRelatedProducts() {
             var grid = document.getElementById('q-related-grid');
