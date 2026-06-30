@@ -1030,10 +1030,15 @@
         const imgContainers = ['.product__main-photos', '.product__photos', '.product__photo-container', '.product__photo', '.js-product-slide', '.product-image-column', '.js-swiper-product', '[data-store^="product-image-"]', '.product__media-wrapper', '.product-gallery__media', '.product__media', '.product-image-main', '.product-media-container', '[data-media-id]', '.product__media-item', '.product-gallery', '.product-single__media', '.media-gallery'];
 
         function tryPlaceTriggerBtn() {
-            // Acha a MAIOR imagem de PRODUTO (dentro de container de galeria, quadrada, fora de banner/hero).
+            // Acha a imagem de PRODUTO (dentro de container de galeria, quadrada, fora de banner/hero).
             const BAD = '[class*="background-media"],[class*="banner"],[class*="hero"],[class*="newsletter"],[class*="slideshow__"],header,footer,[class*="logo"],[class*="rte"]';
             const GOOD = '.product-image-main, .image-wrap, .product__main-photos, .product__photos, .product__photo, .product__media, .product-single__media, [class*="product"][class*="photo"], [class*="product"][class*="media"], [class*="product"][class*="image"]';
-            let best = null, bestArea = 0, bestHost = null;
+            // Containers de slide ativo (carrossel): Flickity/Swiper/genérico. O selo TEM que ir no slide
+            // que aparece primeiro, não no maior — senão fica preso num slide oculto e some na 1ª foto.
+            const ACTIVE = '.is-selected, .is-active, .swiper-slide-active, [class*="starting-slide"], [class*="active-slide"]';
+            // Container ESTÁVEL da galeria (não troca quando o usuário passa as fotos): ancoramos o selo aqui.
+            const STABLE = '.flickity-viewport, .swiper-container, .swiper, .swiper-wrapper, [class*="slideshow"]';
+            let best = null, bestScore = -Infinity, bestHost = null;
             for (const img of document.querySelectorAll('img')) {
                 const r = img.getBoundingClientRect();
                 if (r.width < 180 || r.height < 180) continue;          // ignora thumbs/ícones
@@ -1045,11 +1050,16 @@
                 const host = img.closest(GOOD);
                 if (!host) continue;                                    // só imagem dentro de container de PRODUTO
                 const area = r.width * r.height;
-                if (area > bestArea) { bestArea = area; best = img; bestHost = host; }
+                // pontuação: slide ATIVO domina; depois mais à ESQUERDA (1ª foto do carrossel); depois maior área.
+                const inActive = img.closest(ACTIVE) ? 1 : 0;
+                const score = inActive * 1e13 - r.left * 1e6 + area;
+                if (score > bestScore) { bestScore = score; best = img; bestHost = host; }
             }
             if (best && bestHost) {
-                if (window.getComputedStyle(bestHost).position === 'static') bestHost.style.position = 'relative';
-                bestHost.appendChild(openBtn);
+                // Ancora no frame ESTÁVEL da galeria se existir (carrossel), senão no container da imagem.
+                const anchor = best.closest(STABLE) || bestHost;
+                if (window.getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
+                anchor.appendChild(openBtn);
                 return true;
             }
             return false;
