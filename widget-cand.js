@@ -1020,7 +1020,26 @@
         const imgContainers = ['.product__main-photos', '.product__photos', '.product__photo-container', '.product__photo', '.js-product-slide', '.product-image-column', '.js-swiper-product', '[data-store^="product-image-"]', '.product__media-wrapper', '.product-gallery__media', '.product__media', '.product-image-main', '.product-media-container', '[data-media-id]', '.product__media-item', '.product-gallery', '.product-single__media', '.media-gallery'];
 
         function tryPlaceTriggerBtn() {
-            // Só coloca num container de imagem com TAMANHO REAL (>80px) — evita lazyload 0px (botão fica invisível) e slide de vídeo.
+            // Estratégia AGNÓSTICA de tema: acha a MAIOR imagem visível da página (= foto principal do produto)
+            // e cola o botão no container dela. Não depende de classe de tema.
+            let best = null, bestArea = 0;
+            for (const img of document.querySelectorAll('img')) {
+                const r = img.getBoundingClientRect();
+                if (r.width < 200 || r.height < 200) continue;               // ignora thumbs/ícones
+                const src = (img.currentSrc || img.src || '').toLowerCase();
+                if (/logo|icon|sprite|payment|selo|badge|provador/.test(src)) continue;
+                const area = r.width * r.height;
+                if (area > bestArea) { bestArea = area; best = img; }
+            }
+            if (best) {
+                const host = best.closest('.product-image-main, .image-wrap, .product__media, .product__photo, [class*="product"][class*="image"], [class*="photo"]') || best.parentElement;
+                if (host) {
+                    if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
+                    host.appendChild(openBtn);
+                    return true;
+                }
+            }
+            // fallback por seletor de container (com tamanho real)
             for (const sel of imgContainers) {
                 for (const el of document.querySelectorAll(sel)) {
                     if (el.querySelector('img') && el.offsetHeight > 80 && el.offsetWidth > 80) {
@@ -1034,16 +1053,10 @@
         }
 
         if (!tryPlaceTriggerBtn()) {
-            // Galeria com lazyload: espera o container ter tamanho real (poll até ~12s).
+            // Lazyload: espera a foto carregar e ganhar tamanho (poll até ~15s). SEM fallback no canto.
             let _tries = 0;
             const _iv = setInterval(() => {
-                if (tryPlaceTriggerBtn() || ++_tries > 24) {
-                    clearInterval(_iv);
-                    if (!openBtn.isConnected) {
-                        openBtn.style.cssText = 'position:fixed;bottom:30px;right:20px;top:auto;z-index:100;width:70px;height:70px;';
-                        document.body.appendChild(openBtn);
-                    }
-                }
+                if (tryPlaceTriggerBtn() || ++_tries > 30) clearInterval(_iv);
             }, 500);
         }
 
