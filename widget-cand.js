@@ -1268,7 +1268,9 @@
             const imgs = extractImages();
             const group = document.getElementById('q-photo-selector-group');
             if (group) group.style.display = 'none';
-            selectedProductImgUrl = imgs[0] || '';
+            // Cand: a foto principal de referência é a 2ª da página (a 1ª costuma ser
+            // banner/lifestyle, não o óculos limpo). Fallback pra 1ª se só houver uma.
+            selectedProductImgUrl = imgs[1] || imgs[0] || '';
         }
 
         function openModal() {
