@@ -834,6 +834,13 @@
     var Q_CHECKOUT_URL = '/cart';
 
     function getMainPrice() {
+        // 0) Shopify (tema usecand etc.): pega o preço COM DESCONTO (on-sale), não o compare-at/cheio.
+        //    Sem isso, querySelector('.product__price') pegava o 1º (preço riscado) e mostrava o dobro.
+        var saleEl = document.querySelector('.product__price.on-sale, .product-price.on-sale, .product-price--sale, .price-item--sale, .price__sale .price-item--sale');
+        if (saleEl) {
+            var st = (saleEl.textContent || '').replace(/\s+/g, ' ').trim();
+            if (st && /\d/.test(st)) return st;
+        }
         // 1) preço exibido na página (vários temas Nuvemshop)
         var sel = '.js-price-display, [data-product-price], .product__price .price, .product__price, .price-item--regular, .js-product-price, .price-display';
         var el = document.querySelector(sel);
@@ -938,6 +945,13 @@
     // Parcelamento — o MESMO da pagina: pega a MAIOR parcela do produto ("em ate Nx de R$ X").
     // Le do data-variants (mesma fonte do preco). installments_data vem como STRING JSON aninhada.
     function getInstallment() {
+        // Shopify (tema usecand): o tema já renderiza "Em até 10x de R$ X" no .precoParcela.
+        var pp = document.querySelector('.precoParcela, .textoContSemValor');
+        if (pp) {
+            var pt = (pp.textContent || '').replace(/\s+/g, ' ').trim();
+            if (/\dx\s*de\s*R\$/i.test(pt)) return pt;
+        }
+        // Nuvemshop: le do data-variants (mesma fonte do preco). installments_data = STRING JSON aninhada.
         var dv = document.querySelector('[data-variants]');
         if (!dv) return '';
         try {
