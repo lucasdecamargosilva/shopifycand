@@ -180,7 +180,7 @@
             transition: filter 0.2s;
         }
         .q-btn-trigger-ia:hover { filter: drop-shadow(0 6px 18px rgba(0,0,0,0.32)); }
-        .q-btn-trigger-ia img { width: 100%; height: 100%; object-fit: contain; }
+        .q-btn-trigger-ia img { width: 100%; height: 100%; object-fit: contain; opacity: 1 !important; }
         @media (min-width: 768px) { .q-btn-trigger-ia { width: 70px; height: 70px; } }
 
         /* ── Inline button ── */
@@ -678,7 +678,7 @@
 
 
     // ─── IMAGEM DO BOTÃO (trigger) ─────────────────────────────────────────────
-    const stampImageHTML = `<img src="https://cdn.shopify.com/s/files/1/0636/6334/1746/files/logo_provador.png?v=1772494793" alt="Provador Virtual" style="width:100%;height:100%;object-fit:contain;">`;
+    const stampImageHTML = `<img src="https://cdn.shopify.com/s/files/1/0636/6334/1746/files/logo_provador.png?v=1772494793" alt="Provador Virtual" style="width:100%;height:100%;object-fit:contain;opacity:1;">`;
 
 
 
