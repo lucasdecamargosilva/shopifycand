@@ -1024,7 +1024,13 @@
         openBtn.className = 'q-btn-trigger-ia';
         openBtn.id = 'q-open-ia';
         openBtn.setAttribute('aria-label', 'Abrir Provador Virtual');
-        openBtn.innerHTML = stampImageHTML;
+        // Selo como BACKGROUND do botão (não <img>): imune às regras do tema que escondem
+        // imagens da galeria (display:none / opacity:0 do lazyload). Antes, ancorado no
+        // frame da galeria, a <img> do selo herdava display:none do tema e sumia.
+        openBtn.style.backgroundImage = "url('https://cdn.shopify.com/s/files/1/0636/6334/1746/files/logo_provador.png?v=1772494793')";
+        openBtn.style.backgroundSize = 'contain';
+        openBtn.style.backgroundPosition = 'center';
+        openBtn.style.backgroundRepeat = 'no-repeat';
 
 
         const imgContainers = ['.product__main-photos', '.product__photos', '.product__photo-container', '.product__photo', '.js-product-slide', '.product-image-column', '.js-swiper-product', '[data-store^="product-image-"]', '.product__media-wrapper', '.product-gallery__media', '.product__media', '.product-image-main', '.product-media-container', '[data-media-id]', '.product__media-item', '.product-gallery', '.product-single__media', '.media-gallery'];
