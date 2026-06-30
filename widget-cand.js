@@ -1020,34 +1020,27 @@
         const imgContainers = ['.product__main-photos', '.product__photos', '.product__photo-container', '.product__photo', '.js-product-slide', '.product-image-column', '.js-swiper-product', '[data-store^="product-image-"]', '.product__media-wrapper', '.product-gallery__media', '.product__media', '.product-image-main', '.product-media-container', '[data-media-id]', '.product__media-item', '.product-gallery', '.product-single__media', '.media-gallery'];
 
         function tryPlaceTriggerBtn() {
-            // Estratégia AGNÓSTICA de tema: acha a MAIOR imagem visível da página (= foto principal do produto)
-            // e cola o botão no container dela. Não depende de classe de tema.
-            let best = null, bestArea = 0;
+            // Acha a MAIOR imagem de PRODUTO (dentro de container de galeria, quadrada, fora de banner/hero).
+            const BAD = '[class*="background-media"],[class*="banner"],[class*="hero"],[class*="newsletter"],[class*="slideshow__"],header,footer,[class*="logo"],[class*="rte"]';
+            const GOOD = '.product-image-main, .image-wrap, .product__main-photos, .product__photos, .product__photo, .product__media, .product-single__media, [class*="product"][class*="photo"], [class*="product"][class*="media"], [class*="product"][class*="image"]';
+            let best = null, bestArea = 0, bestHost = null;
             for (const img of document.querySelectorAll('img')) {
                 const r = img.getBoundingClientRect();
-                if (r.width < 200 || r.height < 200) continue;               // ignora thumbs/ícones
+                if (r.width < 180 || r.height < 180) continue;          // ignora thumbs/ícones
+                const ar = r.width / r.height;
+                if (ar > 2.1 || ar < 0.45) continue;                    // descarta banners (largos/altos demais)
                 const src = (img.currentSrc || img.src || '').toLowerCase();
                 if (/logo|icon|sprite|payment|selo|badge|provador/.test(src)) continue;
+                if (img.closest(BAD)) continue;                         // descarta banner/hero/header
+                const host = img.closest(GOOD);
+                if (!host) continue;                                    // só imagem dentro de container de PRODUTO
                 const area = r.width * r.height;
-                if (area > bestArea) { bestArea = area; best = img; }
+                if (area > bestArea) { bestArea = area; best = img; bestHost = host; }
             }
-            if (best) {
-                const host = best.closest('.product-image-main, .image-wrap, .product__media, .product__photo, [class*="product"][class*="image"], [class*="photo"]') || best.parentElement;
-                if (host) {
-                    if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
-                    host.appendChild(openBtn);
-                    return true;
-                }
-            }
-            // fallback por seletor de container (com tamanho real)
-            for (const sel of imgContainers) {
-                for (const el of document.querySelectorAll(sel)) {
-                    if (el.querySelector('img') && el.offsetHeight > 80 && el.offsetWidth > 80) {
-                        if (window.getComputedStyle(el).position === 'static') el.style.position = 'relative';
-                        el.appendChild(openBtn);
-                        return true;
-                    }
-                }
+            if (best && bestHost) {
+                if (window.getComputedStyle(bestHost).position === 'static') bestHost.style.position = 'relative';
+                bestHost.appendChild(openBtn);
+                return true;
             }
             return false;
         }
