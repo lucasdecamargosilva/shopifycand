@@ -1160,7 +1160,28 @@
             if (url.includes('mitiendanube.com') || url.includes('nuvemshop.com')) {
                 return url.replace(/-\d+-\d+\.webp/, '-1024-1024.webp');
             }
+            // Shopify CDN: o tema serve variantes pequenas/placeholder. Pega a foto grande:
+            // tira o sufixo de tamanho (_400x400) -> master, preserva ?v= e força width=1200.
+            if (url.indexOf('cdn.shopify.com') !== -1 || url.indexOf('/cdn/shop/') !== -1) {
+                var parts = url.split('?');
+                var base = parts[0].replace(/_(\d+)x(\d+)?(\.[a-z]{3,4})$/i, '$3');
+                var vm = (parts[1] || '').match(/(?:^|&)(v=\d+)/);
+                return base + '?width=1200' + (vm ? '&' + vm[1] : '');
+            }
             return url;
+        }
+
+        // Temas Shopify põem a foto real no srcset (o src é placeholder/lazy-load). Pega a maior.
+        function largestSrc(img) {
+            var ss = img.getAttribute('srcset') || img.getAttribute('data-srcset') || '';
+            if (!ss) return '';
+            var best = '', bestW = -1;
+            ss.split(',').forEach(function (p) {
+                var seg = p.trim().split(/\s+/);
+                var u = seg[0], w = parseInt((seg[1] || '').replace(/\D/g, '')) || 0;
+                if (u && w >= bestW) { bestW = w; best = u; }
+            });
+            return best;
         }
 
         function extractImages() {
@@ -1175,7 +1196,7 @@
             });
             let uniqueImgs = [];
             imgEls.forEach(img => {
-                let src = img.dataset?.src || img.getAttribute('data-src') || img.src;
+                let src = largestSrc(img) || img.dataset?.src || img.getAttribute('data-src') || img.src;
 
                 if (src && src.includes('data:image')) {
                     const parentA = img.closest('a');
