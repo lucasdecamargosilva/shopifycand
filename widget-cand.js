@@ -420,13 +420,14 @@
 
         /* ── Terms ── */
         .q-terms-row {
-            display: flex; align-items: flex-start; gap: 10px;
-            font-size: 11.5px; color: var(--c-muted); cursor: pointer;
-            line-height: 1.5; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 10px !important; color: var(--c-muted); cursor: pointer;
+            line-height: 1.35 !important; margin-bottom: 14px;
             justify-content: center; text-align: center;
         }
-        .q-terms-row input { margin-top: 3px; cursor: pointer; accent-color: var(--c-ink); flex-shrink: 0; }
-        .q-terms-row a { color: var(--c-ink); text-decoration: underline; text-underline-offset: 2px; }
+        .q-terms-row span { font-size: 10px !important; line-height: 1.35 !important; }
+        .q-terms-row input { width: 13px; height: 13px; margin-top: 0; cursor: pointer; accent-color: var(--c-ink); flex-shrink: 0; }
+        .q-terms-row a { color: var(--c-ink); text-decoration: underline; text-underline-offset: 2px; font-size: 10px !important; }
 
         /* ── CTA buttons ── */
         .q-btn-black {
