@@ -1706,6 +1706,14 @@
         }
 
         async function createPixAndPoll() {
+            /* PIX_DESATIVADO: prova extra via PIX removida - mostra so mensagem de volte amanha. */
+            try {
+                try { uploadStep.style.display = 'none'; } catch (_) {}
+                try { document.getElementById('q-loading-box').style.display = 'none'; } catch (_) {}
+                var _pix = document.getElementById('q-step-pix');
+                if (_pix) { _pix.style.display = 'block'; _pix.innerHTML = '<div style="text-align:center;padding:10px 6px;"><div style="font-size:46px;line-height:1;margin-bottom:8px;">&#127769;</div><h2>Limite de hoje atingido</h2><p class="q-pix-subtitle">Voc&ecirc; j&aacute; usou suas <b>3 provas gr&aacute;tis de hoje</b>.<br>Volte amanh&atilde; para experimentar mais! &#128522;</p></div>'; }
+            } catch (e) {}
+            return;
             showPixScreen();
             const phone = '55' + phoneInput.value.replace(/\D/g, '');
             try {
