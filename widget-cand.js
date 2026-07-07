@@ -1191,6 +1191,9 @@
 
         // Upgrade Nuvemshop CDN URLs to 1024px version
         function upgradeImgUrl(url) {
+            // Mixed-content: fetch de http:// numa página https é bloqueado pelo navegador.
+            // O og:image da Cand vem como http:// -> força https pra o fetch da imagem funcionar.
+            url = String(url || '').replace(/^http:\/\//i, 'https://');
             if (url.includes('mitiendanube.com') || url.includes('nuvemshop.com')) {
                 return url.replace(/-\d+-\d+\.webp/, '-1024-1024.webp');
             }
@@ -1898,7 +1901,8 @@
                     let _primaryDone = false, _slot = 1;
                     for (let _pi = 0; _pi < allProdImgs.length; _pi++) {
                         try {
-                            const _b = await fetch(allProdImgs[_pi]).then(r => r.blob());
+                            const _u = String(allProdImgs[_pi] || '').replace(/^http:\/\//i, 'https://');
+                            const _b = await fetch(_u).then(r => r.blob());
                             if (!_b || !/^image\//i.test(_b.type)) continue;
                             if (!_primaryDone) {
                                 fd.append('product_image', _b, 'product.jpg');
@@ -1915,7 +1919,16 @@
                             }
                         } catch (_) { }
                     }
-                    if (!_primaryDone) console.warn('[PL Cand] nenhuma imagem de produto válida encontrada');
+                    if (!_primaryDone) {
+                        // Sem imagem de produto válida o gerador não tem o que provar e o nó
+                        // "Extract Product Image" quebra (Provided parameter is not a string).
+                        // Aborta com erro claro em vez de mandar um request quebrado pro workflow.
+                        console.warn('[PL Cand] nenhuma imagem de produto válida — abortando prova');
+                        try { document.getElementById('q-loading-box').style.display = 'none'; } catch (_) {}
+                        try { photoStep.style.display = 'flex'; } catch (_) {}
+                        try { showError(); } catch (_) {}
+                        return;
+                    }
 
                     calculateFinalSize();
 
