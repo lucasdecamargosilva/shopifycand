@@ -1233,9 +1233,14 @@
                 let src = largestSrc(img) || img.dataset?.src || img.getAttribute('data-src') || img.src;
 
                 if (src && src.includes('data:image')) {
+                    // NÃO cair pro href da <a> às cegas: em muitos temas o link é a PÁGINA
+                    // do produto (HTML), não a foto — isso ia pro gerador como "image/jpeg",
+                    // o Gemini rejeitava com 400 "Unable to process input image" e a prova
+                    // virava "ALTA DEMANDA". Só aceita o href se ele for mesmo uma imagem.
                     const parentA = img.closest('a');
-                    if (parentA && parentA.href && !parentA.href.includes('javascript:')) {
-                        src = parentA.href;
+                    const ah = (parentA && parentA.href && !parentA.href.includes('javascript:')) ? parentA.href : '';
+                    if (ah && /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(ah)) {
+                        src = ah;
                     } else if (img.getAttribute('data-srcset')) {
                         src = img.getAttribute('data-srcset').split(',')[0].trim().split(' ')[0];
                     }
@@ -1886,23 +1891,31 @@
                         }
                     } catch (_) {}
                     allProdImgs = allProdImgs.slice(0, 4);
-                    console.log('[PL Califa] Enviando', allProdImgs.length, 'fotos do produto');
+                    // Guarda anti-"ALTA DEMANDA": só manda blobs que são REALMENTE imagem.
+                    // Se uma URL resolver pra HTML/404 (ex: página do produto), o Gemini
+                    // rejeita com 400 e a prova quebra. Aqui pulamos o não-imagem; a 1ª
+                    // imagem VÁLIDA vira a principal (binary), o resto vai como base64.
+                    let _primaryDone = false, _slot = 1;
                     for (let _pi = 0; _pi < allProdImgs.length; _pi++) {
                         try {
                             const _b = await fetch(allProdImgs[_pi]).then(r => r.blob());
-                            if (_pi === 0) {
+                            if (!_b || !/^image\//i.test(_b.type)) continue;
+                            if (!_primaryDone) {
                                 fd.append('product_image', _b, 'product.jpg');
+                                _primaryDone = true;
                             } else {
+                                _slot++;
                                 const _b64 = await new Promise((resolve, reject) => {
                                     const _r = new FileReader();
                                     _r.onloadend = () => resolve(_r.result.split(',')[1]);
                                     _r.onerror = reject;
                                     _r.readAsDataURL(_b);
                                 });
-                                fd.append('product_image_' + (_pi+1) + '_b64', _b64);
+                                fd.append('product_image_' + _slot + '_b64', _b64);
                             }
                         } catch (_) { }
                     }
+                    if (!_primaryDone) console.warn('[PL Cand] nenhuma imagem de produto válida encontrada');
 
                     calculateFinalSize();
 
