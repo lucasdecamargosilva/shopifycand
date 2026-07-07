@@ -1191,9 +1191,11 @@
 
         // Upgrade Nuvemshop CDN URLs to 1024px version
         function upgradeImgUrl(url) {
-            // Mixed-content: fetch de http:// numa página https é bloqueado pelo navegador.
-            // O og:image da Cand vem como http:// -> força https pra o fetch da imagem funcionar.
-            url = String(url || '').replace(/^http:\/\//i, 'https://');
+            // (1) http:// numa página https = mixed-content bloqueado; força https.
+            // (2) {width} = placeholder do lazyload do Shopify (data-srcset) que às vezes vem
+            //     antes do lazysizes reescrever -> a URL 404 e a prova sai SEM imagem de produto.
+            //     Substitui por um tamanho real pra a imagem resolver.
+            url = String(url || '').replace(/^http:\/\//i, 'https://').replace(/\{width\}/g, '1200');
             if (url.includes('mitiendanube.com') || url.includes('nuvemshop.com')) {
                 return url.replace(/-\d+-\d+\.webp/, '-1024-1024.webp');
             }
@@ -1901,7 +1903,7 @@
                     let _primaryDone = false, _slot = 1;
                     for (let _pi = 0; _pi < allProdImgs.length; _pi++) {
                         try {
-                            const _u = String(allProdImgs[_pi] || '').replace(/^http:\/\//i, 'https://');
+                            const _u = String(allProdImgs[_pi] || '').replace(/^http:\/\//i, 'https://').replace(/\{width\}/g, '1200');
                             const _b = await fetch(_u).then(r => r.blob());
                             if (!_b || !/^image\//i.test(_b.type)) continue;
                             if (!_primaryDone) {
