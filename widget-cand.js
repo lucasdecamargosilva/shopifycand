@@ -1,4 +1,9 @@
 (function () {
+    // ─── KILL SWITCH ─────────────────────────────────────────────────────────────
+    // Provador desligado no front (pedido do lojista, 09/07/2026). Backend segue ativo.
+    // Para religar: mudar para false (e dar deploy no github.io/shopifycand).
+    var PROVADOR_OFF = true;
+
     function toJpeg(file){return new Promise(function(res){try{var img=new Image();var u=URL.createObjectURL(file);img.onload=function(){URL.revokeObjectURL(u);var w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;if(!w||!h){res(file);return;}var sc=Math.min(1,1280/Math.max(w,h));var cw=Math.round(w*sc),ch=Math.round(h*sc);var c=document.createElement('canvas');c.width=cw;c.height=ch;c.getContext('2d').drawImage(img,0,0,cw,ch);c.toBlob(function(b){res(b||file);},'image/jpeg',0.92);};img.onerror=function(){URL.revokeObjectURL(u);res(file);};img.src=u;}catch(e){res(file);}});}
 
     function isValidBRPhone(nums) {
@@ -22,6 +27,7 @@
     (function() {
         function injectPLBadge() {
             try {
+                if (PROVADOR_OFF) return;
                 if (document.querySelector('.pl-seo-badge')) return;
                 var path = window.location.pathname;
                 var isProduct = (document.querySelector('meta[property="og:type"][content="product"]') && /\/products\/[^\/?#]+/.test(path));
@@ -2044,7 +2050,7 @@
     // Evita aparecer em /products cru, coleções, home, etc. (pedido do lojista Cand).
     const isProductPage = !!document.querySelector('meta[property="og:type"][content="product"]') && /\/products\/[^\/?#]+/.test(window.location.pathname);
 
-    if (isProductPage) {
+    if (isProductPage && !PROVADOR_OFF) {
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
         else init();
     }
