@@ -1216,6 +1216,42 @@
             return url;
         }
 
+        // ─── SHOPIFY: imagem da VARIANTE (COR) selecionada ──────────────────────────
+        // BUG corrigido: no Shopify a galeria carrega as fotos de TODAS as cores em ordem
+        // fixa no DOM, então pegar imgs[1]/face-detect mandava SEMPRE a 1ª cor, mesmo
+        // quando o cliente trocava a variante. Aqui lemos a variante realmente selecionada
+        // (?variant= na URL / [name="id"]) e usamos o featured_image DELA via o endpoint
+        // /products/{handle}.js (cacheado). Se falhar, cai no comportamento antigo.
+        var _plProductJsonCache = null;
+        function _plSelectedVariantId() {
+            try { var u = new URLSearchParams(location.search).get('variant'); if (u) return u; } catch (e) {}
+            var el = document.querySelector('form[action*="/cart/add"] [name="id"]:checked')
+                  || document.querySelector('form[action*="/cart/add"] select[name="id"]')
+                  || document.querySelector('[name="id"]:checked')
+                  || document.querySelector('select[name="id"]')
+                  || document.querySelector('form[action*="/cart/add"] [name="id"]')
+                  || document.querySelector('[name="id"]');
+            return (el && el.value) ? el.value : '';
+        }
+        async function selectedVariantImgUrl() {
+            try {
+                var vid = _plSelectedVariantId();
+                if (!vid) return '';
+                if (!_plProductJsonCache) {
+                    var path = location.pathname.split('?')[0].replace(/\/$/, '');
+                    var res = await fetch(path + '.js', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+                    if (res.ok) _plProductJsonCache = await res.json();
+                }
+                var prod = _plProductJsonCache;
+                if (!prod || !prod.variants) return '';
+                var v = prod.variants.filter(function (x) { return String(x.id) === String(vid); })[0];
+                var src = v && v.featured_image && v.featured_image.src;
+                if (!src) return '';
+                if (src.indexOf('//') === 0) src = 'https:' + src;
+                return upgradeImgUrl(String(src).replace(/^http:\/\//i, 'https://'));
+            } catch (e) { return ''; }
+        }
+
         // Temas Shopify põem a foto real no srcset (o src é placeholder/lazy-load). Pega a maior.
         function largestSrc(img) {
             var ss = img.getAttribute('srcset') || img.getAttribute('data-srcset') || '';
@@ -1858,7 +1894,10 @@
                     }
                 } catch (e) {}
 
-                const prodImg = selectedProductImgUrl || (document.querySelector('meta[property="og:image"]')?.content || '');
+                // Prioridade: imagem da COR selecionada (corrige "vai a cor errada").
+                let variantImg = '';
+                try { variantImg = await selectedVariantImgUrl(); } catch (e) {}
+                const prodImg = variantImg || selectedProductImgUrl || (document.querySelector('meta[property="og:image"]')?.content || '');
                 const prodName = document.querySelector('h1.product__title,.product-single__title,h1')?.innerText || document.title;
 
                 uploadStep.style.display = 'none';
@@ -1890,8 +1929,11 @@
                     // 1ª = prodImg (escolhida pelo cliente ou default); demais = extractImages() exceto a 1ª.
                     let allProdImgs = [];
                     if (prodImg) allProdImgs.push(prodImg);
+                    // Só junta extras da galeria quando NÃO temos a imagem da variante:
+                    // a galeria tem fotos de todas as cores, então mandar extras junto da
+                    // cor certa contaminaria a geração. Com variantImg, mandamos só ela.
                     try {
-                        if (typeof extractImages === 'function') {
+                        if (!variantImg && typeof extractImages === 'function') {
                             const extra = extractImages();
                             for (const u of extra) {
                                 const cleanU = String(u || '').split('?')[0];
