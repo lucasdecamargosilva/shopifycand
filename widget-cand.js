@@ -18,6 +18,8 @@
         var local = nums.length === 11 ? nums.slice(3) : nums.slice(2);
         if (/^(\d)\1+$/.test(local)) { setErr('N\u00famero n\u00e3o parece real — confira'); return false; }
         if (/(\d)\1{5,}/.test(local)) { setErr('N\u00famero n\u00e3o parece real — confira'); return false; }
+        // so 1-2 digitos distintos = fake (99996666, 54545454, 56565656)
+        if (new Set(local).size <= 2) { setErr('N\u00famero n\u00e3o parece real — confira'); return false; }
         if (/^(?:01234567|12345678|23456789|34567890|98765432|87654321|76543210|0123456789|1234567890)/.test(local)) { setErr('N\u00famero n\u00e3o parece real — confira'); return false; }
         return true;
     }
@@ -1801,35 +1803,38 @@
             } catch(_) {}
         }
 
-        async function createPixAndPoll() {
-            /* PIX_DESATIVADO: prova extra via PIX removida - mostra so mensagem de volte amanha. */
-            try {
-                try { uploadStep.style.display = 'none'; } catch (_) {}
-                try { document.getElementById('q-loading-box').style.display = 'none'; } catch (_) {}
-                var _pix = document.getElementById('q-step-pix');
-                if (_pix) { _pix.style.display = 'block'; _pix.innerHTML = '<div style="text-align:center;padding:10px 6px;"><div style="font-size:46px;line-height:1;margin-bottom:8px;">&#127769;</div><h2>Limite de hoje atingido</h2><p class="q-pix-subtitle">Voc&ecirc; j&aacute; usou suas <b>3 provas gr&aacute;tis de hoje</b>.<br>Volte amanh&atilde; para experimentar mais! &#128522;</p></div>'; }
-            } catch (e) {}
-            return;
+        async function createPixAndPoll(_isRetry) {
             showPixScreen();
             const phone = '55' + phoneInput.value.replace(/\D/g, '');
             try {
                 let pix;
-                const pending = _pixLoadPending(phone);
-                if (pending) {
+                // Numa retry, ignora o pendente (foi ele que deu QR quebrado).
+                const pending = _isRetry ? null : _pixLoadPending(phone);
+                // Só reaproveita pendente COMPLETO (com QR base64). Pendente parcial
+                // (base64 vazio) geraria 'data:image/png;base64,undefined' = QR quebrado.
+                if (pending && pending.qr_code_base64) {
                     // Reaproveita PIX pendente
                     pix = { payment_id: pending.payment_id, qr_code: pending.qr_code, qr_code_base64: pending.qr_code_base64 };
                 } else {
+                    if (pending) _pixClearPending(phone); // limpa o pendente quebrado
                     const resp = await fetch(WEBHOOK_PIX, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: 'cliente@provoulevou.com.br', phone, loja: 'cand', origin: location.origin })
                     });
                     pix = await resp.json();
-                    if (!pix.payment_id || !pix.qr_code) throw new Error('PIX inválido');
+                    // Exige o base64 também — sem ele o QR não renderiza.
+                    if (!pix.payment_id || !pix.qr_code || !pix.qr_code_base64) throw new Error('PIX inválido');
                     _pixSavePending(phone, pix.payment_id, pix.qr_code, pix.qr_code_base64);
                 }
 
-                document.getElementById('q-pix-qr-img').src = 'data:image/png;base64,' + pix.qr_code_base64;
+                const _qrImg = document.getElementById('q-pix-qr-img');
+                // Auto-recuperação: se o QR não carregar, limpa e refaz UMA vez.
+                _qrImg.onerror = function () {
+                    _qrImg.onerror = null;
+                    if (!_isRetry) { _pixClearPending(phone); stopPixPolling(); createPixAndPoll(true); }
+                };
+                _qrImg.src = 'data:image/png;base64,' + pix.qr_code_base64;
                 document.getElementById('q-pix-code').value = pix.qr_code;
 
                 // Polling a cada 3s por até 5min
