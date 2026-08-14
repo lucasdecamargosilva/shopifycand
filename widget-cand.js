@@ -1126,17 +1126,25 @@
         inlineSvg.setAttribute('stroke-width', '1.5');
         inlineSvg.setAttribute('stroke-linecap', 'round');
         inlineSvg.setAttribute('stroke-linejoin', 'round');
-        const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path1.setAttribute('d', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2');
-        const circle1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle1.setAttribute('cx', '12');
-        circle1.setAttribute('cy', '7');
-        circle1.setAttribute('r', '4');
-        inlineSvg.appendChild(path1);
-        inlineSvg.appendChild(circle1);
+        // oculos: duas lentes, ponte no meio e as hastes
+        var _lenteE = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        _lenteE.setAttribute('cx', '6.5'); _lenteE.setAttribute('cy', '14'); _lenteE.setAttribute('r', '3.6');
+        var _lenteD = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        _lenteD.setAttribute('cx', '17.5'); _lenteD.setAttribute('cy', '14'); _lenteD.setAttribute('r', '3.6');
+        var _ponte = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        _ponte.setAttribute('d', 'M10.1 13.4c.7-.9 3.1-.9 3.8 0');
+        var _hasteE = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        _hasteE.setAttribute('d', 'M2.9 13.1 1.6 9.4');
+        var _hasteD = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        _hasteD.setAttribute('d', 'M21.1 13.1 22.4 9.4');
+        inlineSvg.appendChild(_lenteE);
+        inlineSvg.appendChild(_lenteD);
+        inlineSvg.appendChild(_ponte);
+        inlineSvg.appendChild(_hasteE);
+        inlineSvg.appendChild(_hasteD);
         inlineBtn.appendChild(inlineSvg);
 
-        const inlineBtnText = document.createTextNode('Provador Virtual');
+        const inlineBtnText = document.createTextNode('EXPERIMENTE NO SEU ROSTO');
         inlineBtn.appendChild(inlineBtnText);
 
         inlineBtn.addEventListener('click', (e) => {
