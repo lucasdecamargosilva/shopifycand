@@ -1351,7 +1351,7 @@
         // e escolhemos a 1ª que tem rosto como foto PRINCIPAL. Roda no navegador:
         // FaceDetector nativo (Chromium) e, se não houver, MediaPipe via CDN (cross-browser).
         // Se nada detectar (ou o detector falhar), mantém o default acima — sem regressão.
-        var faceDetectPromise = null;
+        var faceDetectPromise = null, _faceUrl = null;
         var _faceDet = null, _faceDetTried = false;
         async function getFaceDetector() {
             if (_faceDetTried) return _faceDet;
@@ -1360,10 +1360,14 @@
                 if ('FaceDetector' in window) { _faceDet = { native: new window.FaceDetector({ fastMode: true, maxDetectedFaces: 1 }) }; return _faceDet; }
             } catch (e) {}
             try {
-                var vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs');
-                var fileset = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm');
+                // Servido do nosso Pages: na Menina Flor o jsdelivr caiu fora da CSP e a
+                // deteccao morria em silencio por meses. Aqui a CSP nao bloqueia, mas nao ha
+                // motivo pra depender de terceiro.
+                var _MP = 'https://lucasdecamargosilva.github.io/fbitsmeninaflor/mediapipe';
+                var vision = await import(_MP + '/vision_bundle.mjs');
+                var fileset = await vision.FilesetResolver.forVisionTasks(_MP + '/wasm');
                 var det = await vision.FaceDetector.createFromOptions(fileset, {
-                    baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite' },
+                    baseOptions: { modelAssetPath: _MP + '/blaze_face_short_range.tflite' },
                     runningMode: 'IMAGE'
                 });
                 _faceDet = { mp: det };
@@ -1407,17 +1411,53 @@
             if (!urls || !urls.length) return null;
             var det = await getFaceDetector();
             if (!det) return null;
+            var comRosto = [];
             for (var i = 0; i < urls.length; i++) {
                 var img = await _loadCorsImg(urls[i]);
                 if (!img) continue;
-                if (await _imgHasFace(det, img)) return urls[i];
+                if (await _imgHasFace(det, img)) comRosto.push(urls[i]);
             }
-            return null;
+            if (!comRosto.length) return null;
+            // A galeria costuma ter foto de rosto de MAIS DE UMA cor (ex.: San Marino tem
+            // "Preto_055" e "Cinza_leopardo_123"). Pegar a 1a mandaria a cor errada quando o
+            // cliente escolhe outra variante — por isso casamos pelo nome da cor selecionada.
+            try {
+                var cor = _plCorSelecionada();
+                if (cor) {
+                    for (var j = 0; j < comRosto.length; j++) {
+                        if (_plNorm(comRosto[j]).indexOf(cor) !== -1) return comRosto[j];
+                    }
+                }
+            } catch (e) {}
+            return comRosto[0];
+        }
+        // Nome da cor escolhida, normalizado (sem acento, minusculo, _ no lugar de espaco),
+        // pra casar com o nome do arquivo da foto ("Cinza_leopardo_123.png").
+        function _plNorm(t) {
+            return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        }
+        function _plCorSelecionada() {
+            try {
+                var vid = _plSelectedVariantId();
+                var prod = _plProductJsonCache;
+                if (vid && prod && prod.variants) {
+                    var v = prod.variants.filter(function (x) { return String(x.id) === String(vid); })[0];
+                    if (v) {
+                        var vals = (v.options && v.options.length) ? v.options : String(v.title || '').split(' / ');
+                        for (var i = 0; i < vals.length; i++) {
+                            var c = _plNorm(vals[i]);
+                            if (c && c !== 'default_title') return c;
+                        }
+                    }
+                }
+            } catch (e) {}
+            return '';
         }
         function startFaceDetect() {
             if (faceDetectPromise) return faceDetectPromise;
             faceDetectPromise = detectFacePhoto(productGalleryUrls(8)).then(function (u) {
-                if (u) { selectedProductImgUrl = u; try { console.log('[PL Cand] foto no rosto detectada como principal'); } catch (e) {} }
+                if (u) { _faceUrl = u; selectedProductImgUrl = u; try { console.log('[PL Cand] foto no rosto detectada como principal'); } catch (e) {} }
                 return u;
             }).catch(function () { return null; });
             return faceDetectPromise;
@@ -2044,7 +2084,13 @@
                 // Prioridade: imagem da COR selecionada (corrige "vai a cor errada").
                 let variantImg = '';
                 try { variantImg = await selectedVariantImgUrl(); } catch (e) {}
-                const prodImg = variantImg || selectedProductImgUrl || (document.querySelector('meta[property="og:image"]')?.content || '');
+                // ORDEM (pedido do Lucas, 28/08/2026): havendo foto do oculos NO ROSTO, manda
+                // SO ela — e' a unica que mostra encaixe e lente reais. Antes a imagem da
+                // variante vinha primeiro e, como no Shopify sempre ha cor selecionada, a foto
+                // de rosto NUNCA era usada (as provas iam com packshot).
+                // ATENCAO ao religar cor: a foto de rosto costuma ser de UMA cor so, entao em
+                // produto multicor a cor pode divergir da escolhida. Foi decisao consciente.
+                const prodImg = _faceUrl || variantImg || selectedProductImgUrl || (document.querySelector('meta[property="og:image"]')?.content || '');
                 const prodName = document.querySelector('h1.product__title,.product-single__title,h1')?.innerText || document.title;
 
                 uploadStep.style.display = 'none';
@@ -2080,7 +2126,7 @@
                     // a galeria tem fotos de todas as cores, então mandar extras junto da
                     // cor certa contaminaria a geração. Com variantImg, mandamos só ela.
                     try {
-                        if (!variantImg && typeof extractImages === 'function') {
+                        if (!_faceUrl && !variantImg && typeof extractImages === 'function') {
                             const extra = extractImages();
                             for (const u of extra) {
                                 const cleanU = String(u || '').split('?')[0];
