@@ -1157,7 +1157,8 @@
             openModal();
         });
 
-        // Posiciona acima do botão de compra, herdando o MESMO design/tamanho do tema
+        // Posiciona ABAIXO do botão de compra (pedido do Lucas em 31/08/2026), herdando
+        // o MESMO design/tamanho do tema — mas sem contorno, pra não competir com o comprar.
         const buyBtn = document.querySelector('.js-addtocart, .btn-add-to-cart, [data-component="product.add-to-cart"], button[name="add"], .product-form__submit');
         if (buyBtn) {
             // Herda as classes do tema (MESMO TAMANHO do botão de compra).
@@ -1167,13 +1168,13 @@
             inlineBtn.style.setProperty('background-color', '#fff', 'important');
             inlineBtn.style.setProperty('background-image', 'none', 'important');
             inlineBtn.style.setProperty('color', '#000', 'important');
-            inlineBtn.style.setProperty('border', '1.5px solid #111', 'important');
+            inlineBtn.style.setProperty('border', 'none', 'important');
             inlineBtn.style.setProperty('box-shadow', 'none', 'important');
             inlineBtn.style.setProperty('display', 'flex', 'important');
             inlineBtn.style.setProperty('align-items', 'center', 'important');
             inlineBtn.style.setProperty('justify-content', 'center', 'important');
             inlineBtn.style.setProperty('gap', '8px', 'important');
-            inlineBtn.style.marginBottom = '10px';
+            inlineBtn.style.marginTop = '10px';   // fica ABAIXO do comprar: o respiro vai em cima
             // pseudo-elementos do tema (não dá inline) -> <style> com especificidade dobrada
             if (!document.getElementById('q-provador-btn-style')) {
                 var _st = document.createElement('style');
@@ -1181,11 +1182,11 @@
                 _st.textContent = '.q-provador-trigger.q-provador-trigger::before,.q-provador-trigger.q-provador-trigger::after{background:none !important;background-color:transparent !important;background-image:none !important;box-shadow:none !important;border:0 !important;opacity:0 !important;content:none !important;}.q-provador-trigger svg{width:18px !important;height:18px !important;flex:0 0 auto;}';
                 document.head.appendChild(_st);
             }
-            buyBtn.parentNode.insertBefore(inlineBtn, buyBtn);
+            buyBtn.parentNode.insertBefore(inlineBtn, buyBtn.nextSibling);   // abaixo do comprar
         } else {
             const variantsContainer = document.querySelector('.js-product-variants, .product-form__buttons, product-form');
             if (variantsContainer) {
-                variantsContainer.parentNode.insertBefore(inlineBtn, variantsContainer);
+                variantsContainer.parentNode.insertBefore(inlineBtn, variantsContainer.nextSibling);
             }
         }
         const genBtn      = document.getElementById('q-btn-generate');
