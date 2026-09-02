@@ -2085,13 +2085,12 @@
                 // Prioridade: imagem da COR selecionada (corrige "vai a cor errada").
                 let variantImg = '';
                 try { variantImg = await selectedVariantImgUrl(); } catch (e) {}
-                // ORDEM (pedido do Lucas, 28/08/2026): havendo foto do oculos NO ROSTO, manda
-                // SO ela — e' a unica que mostra encaixe e lente reais. Antes a imagem da
-                // variante vinha primeiro e, como no Shopify sempre ha cor selecionada, a foto
-                // de rosto NUNCA era usada (as provas iam com packshot).
-                // ATENCAO ao religar cor: a foto de rosto costuma ser de UMA cor so, entao em
-                // produto multicor a cor pode divergir da escolhida. Foi decisao consciente.
-                const prodImg = _faceUrl || variantImg || selectedProductImgUrl || (document.querySelector('meta[property="og:image"]')?.content || '');
+                // ORDEM (corrigido 02/09/2026): a COR SELECIONADA manda. O packshot da
+                // variante e' a referencia principal (cor certa). Antes a foto no rosto vinha
+                // primeiro, mas como ela e' de UMA cor so, em produto multicor ignorava a
+                // variacao que a cliente escolheu (a prova saia na cor errada). A foto no
+                // rosto ainda entra como 2a referencia (so tamanho/encaixe) quando existe.
+                const prodImg = variantImg || _faceUrl || selectedProductImgUrl || (document.querySelector('meta[property="og:image"]')?.content || '');
                 const prodName = document.querySelector('h1.product__title,.product-single__title,h1')?.innerText || document.title;
 
                 uploadStep.style.display = 'none';
