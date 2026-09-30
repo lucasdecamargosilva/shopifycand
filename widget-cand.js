@@ -2103,6 +2103,8 @@
                     fd.append('whatsapp', '55' + phoneInput.value.replace(/\D/g, ''));
                     fd.append('phone_raw', phoneInput.value);
                     fd.append('product_name', prodName);
+                    // link do produto (sem utm/fbclid, mantém a variante) — o CRM usa nos disparos com link
+                    try { var _pu = new URL(location.href); var _pv = _pu.searchParams.get('variant'); fd.append('product_url', _pu.origin + _pu.pathname + (_pv ? '?variant=' + _pv : '')); } catch (_e) {}
                     fd.append('product_type', currentProduct.category);
                     fd.append('product_fit', currentProduct.fit);
                     fd.append('api_key', keyToUse);
