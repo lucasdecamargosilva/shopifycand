@@ -1267,6 +1267,24 @@
                 return upgradeImgUrl(String(src).replace(/^http:\/\//i, 'https://'));
             } catch (e) { return ''; }
         }
+        // Cand organiza a galeria em PARES por cor: [frente cor A, lado cor A, frente cor B, lado cor B...].
+        // A foto logo depois da foto da cor é a mesma cor em outro ângulo (validado em 14 cores / 6 produtos,
+        // 02/10/2026). Manda as 2: a IA vê frente + lateral (tamanho e hastes) sem misturar outra cor.
+        async function selectedVariantNextImgUrl() {
+            try {
+                var prod = _plProductJsonCache; var vid = _plSelectedVariantId();
+                if (!prod || !prod.variants || !prod.images || !vid) return '';
+                var st = function (u) { return String(u || '').split('?')[0].replace(/^https?:/, '').replace(/^\/\//, ''); };
+                var v = prod.variants.filter(function (x) { return String(x.id) === String(vid); })[0];
+                var fi = v && v.featured_image && v.featured_image.src; if (!fi) return '';
+                var imgs = prod.images.map(st), k = imgs.indexOf(st(fi));
+                if (k < 0 || k + 1 >= imgs.length) return '';
+                var prox = imgs[k + 1];
+                var outrasCores = prod.variants.map(function (x) { return x.featured_image && st(x.featured_image.src); }).filter(Boolean);
+                if (outrasCores.indexOf(prox) >= 0) return '';   // a próxima já é a foto de outra cor: não manda
+                return upgradeImgUrl('https://' + prox);
+            } catch (e) { return ''; }
+        }
 
         // Temas Shopify põem a foto real no srcset (o src é placeholder/lazy-load). Pega a maior.
         function largestSrc(img) {
@@ -2124,6 +2142,7 @@
                     // 1ª = prodImg (escolhida pelo cliente ou default); demais = extractImages() exceto a 1ª.
                     let allProdImgs = [];
                     if (prodImg) allProdImgs.push(prodImg);
+                    if (variantImg && prodImg === variantImg) { try { const _nx = await selectedVariantNextImgUrl(); if (_nx) allProdImgs.push(_nx); } catch (_) {} }
                     // Só junta extras da galeria quando NÃO temos a imagem da variante:
                     // a galeria tem fotos de todas as cores, então mandar extras junto da
                     // cor certa contaminaria a geração. Com variantImg, mandamos só ela.
